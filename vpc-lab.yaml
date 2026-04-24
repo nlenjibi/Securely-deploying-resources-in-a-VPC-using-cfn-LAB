@@ -188,6 +188,7 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
         - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+        - arn:aws:iam::aws:policy/iam:DetachRolePolicy
 
   InstanceProfile:
     Type: AWS::IAM::InstanceProfile
