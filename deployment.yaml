@@ -1,4 +1,4 @@
-template-file-path: bem11-vpc-lab.yaml
+template-file-path: vpc-lab.yaml
 
 stack-name: bem11-vpc-lab
 
