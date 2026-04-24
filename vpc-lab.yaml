@@ -1,7 +1,11 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: BEM11 Secure Multi-AZ VPC (Final Optimized)
+Description: BEM11 Secure Multi-AZ VPC with NAT, EC2, and SSM-only access
 
+# ─────────────────────────────
+# PARAMETERS
+# ─────────────────────────────
 Parameters:
+
   StudentName:
     Type: String
     Default: "Your Name"
@@ -19,18 +23,17 @@ Parameters:
     Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
 
 
+# ─────────────────────────────
+# NETWORKING (VPC)
+# ─────────────────────────────
 Resources:
 
-# ───────────── VPC ─────────────
   VPC:
     Type: AWS::EC2::VPC
     Properties:
       CidrBlock: 10.0.0.0/16
       EnableDnsSupport: true
       EnableDnsHostnames: true
-      Tags:
-        - Key: Name
-          Value: bem11-vpc
 
   IGW:
     Type: AWS::EC2::InternetGateway
@@ -42,7 +45,9 @@ Resources:
       InternetGatewayId: !Ref IGW
 
 
-# ───────────── SUBNETS ─────────────
+# ─────────────────────────────
+# SUBNETS (2 AZs)
+# ─────────────────────────────
   PublicSubnet1:
     Type: AWS::EC2::Subnet
     Properties:
@@ -50,9 +55,6 @@ Resources:
       CidrBlock: 10.0.1.0/24
       AvailabilityZone: !Select [0, !GetAZs ""]
       MapPublicIpOnLaunch: true
-      Tags:
-        - Key: Name
-          Value: bem11-public-az1
 
   PublicSubnet2:
     Type: AWS::EC2::Subnet
@@ -61,9 +63,6 @@ Resources:
       CidrBlock: 10.0.2.0/24
       AvailabilityZone: !Select [1, !GetAZs ""]
       MapPublicIpOnLaunch: true
-      Tags:
-        - Key: Name
-          Value: bem11-public-az2
 
   PrivateSubnet1:
     Type: AWS::EC2::Subnet
@@ -71,9 +70,6 @@ Resources:
       VpcId: !Ref VPC
       CidrBlock: 10.0.11.0/24
       AvailabilityZone: !Select [0, !GetAZs ""]
-      Tags:
-        - Key: Name
-          Value: bem11-private-az1
 
   PrivateSubnet2:
     Type: AWS::EC2::Subnet
@@ -81,12 +77,11 @@ Resources:
       VpcId: !Ref VPC
       CidrBlock: 10.0.12.0/24
       AvailabilityZone: !Select [1, !GetAZs ""]
-      Tags:
-        - Key: Name
-          Value: bem11-private-az2
 
 
-# ───────────── NAT (HA) ─────────────
+# ─────────────────────────────
+# NAT GATEWAYS (HIGH AVAILABILITY)
+# ─────────────────────────────
   EIP1:
     Type: AWS::EC2::EIP
     DependsOn: AttachIGW
@@ -101,20 +96,20 @@ Resources:
 
   NAT1:
     Type: AWS::EC2::NatGateway
-    DependsOn: EIP1
     Properties:
       AllocationId: !GetAtt EIP1.AllocationId
       SubnetId: !Ref PublicSubnet1
 
   NAT2:
     Type: AWS::EC2::NatGateway
-    DependsOn: EIP2
     Properties:
       AllocationId: !GetAtt EIP2.AllocationId
       SubnetId: !Ref PublicSubnet2
 
 
-# ───────────── ROUTING ─────────────
+# ─────────────────────────────
+# ROUTING
+# ─────────────────────────────
   PublicRT:
     Type: AWS::EC2::RouteTable
     Properties:
@@ -147,7 +142,6 @@ Resources:
 
   PrivateRoute1:
     Type: AWS::EC2::Route
-    DependsOn: NAT1
     Properties:
       RouteTableId: !Ref PrivateRT1
       DestinationCidrBlock: 0.0.0.0/0
@@ -166,7 +160,6 @@ Resources:
 
   PrivateRoute2:
     Type: AWS::EC2::Route
-    DependsOn: NAT2
     Properties:
       RouteTableId: !Ref PrivateRT2
       DestinationCidrBlock: 0.0.0.0/0
@@ -179,11 +172,12 @@ Resources:
       RouteTableId: !Ref PrivateRT2
 
 
-# ───────────── IAM (SSM ONLY) ─────────────
+# ─────────────────────────────
+# IAM ROLE (SSM ONLY ACCESS)
+# ─────────────────────────────
   SSMRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: bem11-ssm-role
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -193,21 +187,22 @@ Resources:
             Action: sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
 
   InstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
-      InstanceProfileName: bem11-ssm-profile
-      Roles:
-        - !Ref SSMRole
+      Roles: [!Ref SSMRole]
 
 
-# ───────────── SECURITY ─────────────
+# ─────────────────────────────
+# SECURITY GROUPS
+# ─────────────────────────────
   PublicSG:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Public Web SG
       VpcId: !Ref VPC
+      GroupDescription: Public Web SG
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 80
@@ -221,8 +216,8 @@ Resources:
   PrivateSG:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Private SG
       VpcId: !Ref VPC
+      GroupDescription: Private SG
       SecurityGroupIngress:
         - IpProtocol: icmp
           FromPort: -1
@@ -230,7 +225,9 @@ Resources:
           CidrIp: 10.0.0.0/16
 
 
-# ───────────── EC2 ─────────────
+# ─────────────────────────────
+# EC2 INSTANCES (2 PUBLIC + 2 PRIVATE)
+# ─────────────────────────────
   Web1:
     Type: AWS::EC2::Instance
     Properties:
@@ -245,7 +242,7 @@ Resources:
           dnf install -y httpd
           systemctl enable httpd
           systemctl start httpd
-          echo "<h1>${StudentName}</h1><h2>${LabName}</h2><p>AZ1</p>" > /var/www/html/index.html
+          echo "<h1>${StudentName}</h1><h2>${LabName}</h2><p>AZ1 Web Server</p>" > /var/www/html/index.html
 
   Web2:
     Type: AWS::EC2::Instance
@@ -261,7 +258,7 @@ Resources:
           dnf install -y httpd
           systemctl enable httpd
           systemctl start httpd
-          echo "<h1>${StudentName}</h1><h2>${LabName}</h2><p>AZ2</p>" > /var/www/html/index.html
+          echo "<h1>${StudentName}</h1><h2>${LabName}</h2><p>AZ2 Web Server</p>" > /var/www/html/index.html
 
   App1:
     Type: AWS::EC2::Instance
@@ -282,8 +279,11 @@ Resources:
       IamInstanceProfile: !Ref InstanceProfile
 
 
-# ───────────── OUTPUTS ─────────────
+# ─────────────────────────────
+# OUTPUTS (IMPORTANT FOR DEMO)
+# ─────────────────────────────
 Outputs:
+
   Web1URL:
     Value: !Sub "http://${Web1.PublicDnsName}"
 
