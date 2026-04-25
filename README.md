@@ -1,236 +1,185 @@
-```md
-# 📘 BEM11 – Securely Deploying Resources in a VPC using CloudFormation
+Here is a **clean, professional README.md** for your **BEM11 Security Baseline Lab (Level 1)** using **CloudFormation + GitSync + Least Privilege IAM + Secrets Management**.
 
-> **Module:** BEM11 – Deep Dive into Networking on AWS  
-> **Lab:** Securely Deploying Resources in a VPC using CloudFormation  
+You can copy this directly into your GitHub repo.
 
 ---
 
-## 1. Architecture Overview
+# 📘 BEM11 Security Baseline Lab – Level 1 (IAM & Secrets)
 
-### 🔹 Solution Summary
-This project deploys a **highly available and secure VPC architecture** using CloudFormation.
+## 🧭 Overview
 
-- 1 VPC (10.0.0.0/16)
-- 2 Availability Zones
-- 2 Public Subnets (Web Tier)
-- 2 Private Subnets (Application Tier)
-- 2 NAT Gateways (one per AZ)
-- 4 EC2 Instances:
-  - 2 Public (Apache Web Servers)
-  - 2 Private (Application Instances)
-- Internet Gateway for public access
-- **AWS Systems Manager (Session Manager) for access (no SSH)**
+This project implements **AWS Security Baseline Level 1 controls** using **Infrastructure as Code (CloudFormation)** and **GitSync deployment automation**.
+
+The goal is to enforce:
+
+* 🔐 Least privilege IAM access
+* 🔑 Secure secrets management (SSM + Secrets Manager)
+* 🧱 Elimination of long-term credentials for applications
+* ⚙️ Automated infrastructure provisioning using GitSync + CloudFormation
 
 ---
 
-### 🔹 Architecture Layout
+## 🎯 Objectives
+
+This lab demonstrates:
+
+* Creation of **IAM Roles instead of IAM Users for applications**
+* Implementation of **least privilege access policies**
+* Secure storage of secrets using:
+
+  * AWS Systems Manager Parameter Store
+  * AWS Secrets Manager
+* Infrastructure deployment using:
+
+  * AWS CloudFormation
+  * GitSync automation
+
+---
+
+## 🏗️ Architecture
+
+This stack provisions:
+
+### 🔐 IAM Roles
+
+* EC2 Role (`*_ec2_role`)
+* Lambda Role (`*_lambda_role`)
+* ECS Role (`*_ecs_role`)
+
+Each role follows **least privilege principles** and is scoped to required actions only.
+
+---
+
+### 🔑 Secrets Management
+
+* AWS Systems Manager Parameter Store (SecureString)
+* AWS Secrets Manager secret
+
+Encryption is handled using **AWS KMS key**
+
+---
+
+## 📂 Project Structure
 
 ```
-
-Region
-└── VPC (10.0.0.0/16)
-│
-├── AZ1                          AZ2
-│   ├── Public Subnet            Public Subnet
-│   │   ├── Web EC2              Web EC2
-│   │   └── NAT Gateway          NAT Gateway
-│   │
-│   └── Private Subnet           Private Subnet
-│       └── App EC2              App EC2
-│
-└── Internet Gateway
-
-```
-
----
-
-### 🔹 Traffic Flow
-
-| Source | Destination | Path |
-|--------|------------|------|
-| Internet | Public EC2 | IGW → Public Subnet |
-| Public EC2 | Internet | IGW |
-| Private EC2 | Internet | NAT Gateway → IGW |
-| Public ↔ Private | Internal | VPC routing |
-
----
-
-### 🔹 Key Requirements Covered
-
-- ✅ Multi-AZ deployment  
-- ✅ Public and private subnet isolation  
-- ✅ NAT Gateway per AZ (no cross-AZ dependency)  
-- ✅ Apache installed via User Data  
-- ✅ No SSH access  
-- ✅ Session Manager for all access  
-- ✅ Least-privilege security groups  
-
----
-
-## 2. Prerequisites
-
-- AWS Account  
-- AWS CLI installed and configured (`aws configure`)  
-- IAM permissions (CloudFormation, EC2, VPC, IAM)  
-- Session Manager enabled (default for Amazon Linux)
-
----
-
-## 3. Repository Structure
-
-```
-
 .
-├── vpc-lab.yaml
-├── README.md
-└── docs/
-
-````
-
----
-
-## 4. Parameters
-
-| Parameter | Description |
-|----------|------------|
-| StudentName | Your name (shown on webpage) |
-| LabName | Lab title |
-| InstanceType | EC2 instance type |
-| AMI | Latest Amazon Linux (auto-resolved) |
-
----
-
-## 5. Deployment Guide
-
-### Option A – AWS Console
-1. Go to **CloudFormation → Create Stack**  
-2. Upload `vpc-lab.yaml`  
-3. Enter stack name  
-4. Set `StudentName`  
-5. Deploy  
-
----
-
-### Option B – AWS CLI
-
-```bash
-aws cloudformation create-stack \
-  --stack-name bem11-vpc-lab \
-  --template-body file://vpc-lab.yaml \
-  --capabilities CAPABILITY_NAMED_IAM \
-  --parameters ParameterKey=StudentName,ParameterValue="Your Name"
-````
-
----
-
-## 6. Validation Checklist (Live Demo)
-
-### ✅ 1. Web Servers Accessible
-
-Open:
-
-```
-http://<Public-DNS-1>
-http://<Public-DNS-2>
-```
-
-✔ Displays your name and lab
-
----
-
-### ✅ 2. Public → Private Connectivity
-
-Using Session Manager:
-
-```bash
-ping <private-ip>
-```
-
-✔ Should succeed
-
----
-
-### ✅ 3. Private → Internet (NAT Test)
-
-```bash
-ping 8.8.8.8
-curl google.com
-```
-
-✔ Confirms outbound internet via NAT Gateway
-
----
-
-### ✅ 4. No SSH Access
-
-* Port 22 is not open
-* Only Session Manager works
-
----
-
-## 7. Session Manager Usage
-
-### Connect via Console
-
-EC2 → Instance → Connect → Session Manager
-
-### Connect via CLI
-
-```bash
-aws ssm start-session --target <instance-id>
+├── deployment.yaml              # GitSync configuration
+├── security-baseline-least-privilege.yaml  # CloudFormation template
+└── README.md
 ```
 
 ---
 
-## 8. Architectural Knowledge (Q&A)
+## 🚀 Deployment Method (GitSync + CloudFormation)
 
-### 🔹 What is a NAT Gateway?
+### 1. Push code to GitHub repository
 
-A managed AWS service that allows **private instances to access the internet securely** without allowing inbound traffic.
+### 2. GitSync configuration
 
----
-
-### 🔹 Why use one NAT Gateway per AZ?
-
-* Improves availability
-* Avoids single point of failure
-* Eliminates cross-AZ traffic costs
-
----
-
-### 🔹 What is a Regional NAT Gateway?
-
-* A single NAT serving multiple AZs
-* Simpler but less fault isolation
-* Can replace multiple NATs but not ideal for high availability
-
----
-
-## 9. Design Decisions
-
-| Decision             | Reason                            |
-| -------------------- | --------------------------------- |
-| Multi-AZ             | High availability                 |
-| Private subnets      | Secure internal resources         |
-| NAT per AZ           | Fault tolerance                   |
-| No SSH               | Secure access via Session Manager |
-| Apache via User Data | Automated setup                   |
-
----
-
-## 10. Cost & Cleanup
-
-### 💰 Cost Considerations
-
-* NAT Gateways are the main cost
-* EC2 instances also contribute
-
----
-
-### 🧹 Cleanup
-
-```bash
-aws cloudformation delete-stack --stack-name bem11-vpc-lab
+```yaml
+template-file-path: security-baseline-least-privilege.yaml
+stack-name: bem11-security-baseline-lab
+region: us-east-1
+capabilities:
+  - CAPABILITY_IAM
+  - CAPABILITY_NAMED_IAM
 ```
+
+### 3. Automatic deployment
+
+Any push to the repository triggers:
+
+* CloudFormation stack update
+* Resource provisioning
+
+---
+
+## ⚙️ Parameters
+
+| Parameter    | Description                            |
+| ------------ | -------------------------------------- |
+| FullName     | Used for naming IAM roles              |
+| S3BucketName | Bucket used for least privilege access |
+
+---
+
+## 🔐 Security Design
+
+### ✔ IAM Best Practices
+
+* No IAM users for applications
+* IAM Roles used for EC2, Lambda, ECS
+* Scoped permissions (no wildcard S3 access)
+
+### ✔ Least Privilege Example
+
+Instead of:
+
+```
+AmazonS3ReadOnlyAccess
+```
+
+We use:
+
+```
+s3:GetObject
+s3:ListBucket
+Scoped to specific bucket only
+```
+
+---
+
+### ✔ Secrets Protection
+
+* No hardcoded credentials in code
+* Secrets stored in:
+
+  * AWS SSM Parameter Store
+  * AWS Secrets Manager
+* Encrypted using AWS KMS
+
+---
+
+## 📦 Resources Created
+
+| Resource               | Purpose                      |
+| ---------------------- | ---------------------------- |
+| IAM Role (EC2)         | EC2 instance permissions     |
+| IAM Role (Lambda)      | Lambda execution permissions |
+| IAM Role (ECS)         | Container task permissions   |
+| SSM Parameter          | Secure configuration storage |
+| Secrets Manager Secret | Application secrets storage  |
+| KMS Key                | Encryption of sensitive data |
+
+---
+
+## 🧪 Validation Checklist (Lab Submission)
+
+* [x] EC2 IAM Role created
+* [x] Lambda IAM Role created
+* [x] ECS IAM Role created
+* [x] Parameter Store entry created
+* [x] Secrets Manager secret created
+* [x] GitSync deployment successful
+* [x] CloudFormation stack created successfully
+
+
+
+## 🧠 Key Learnings
+
+* IAM Roles are preferred over IAM Users for workloads
+* Secrets must never be hardcoded in applications
+* Least privilege reduces attack surface significantly
+* CloudFormation enables secure and repeatable infrastructure
+* GitSync automates infrastructure deployment from Git repositories
+
+---
+
+## 🔮 Future Improvements
+
+* Add IAM Permission Boundaries
+* Add VPC endpoint restrictions (Level 4)
+* Enable automatic Secrets rotation
+* Integrate AWS CodeGuru for secret scanning
+* Add CloudTrail monitoring for IAM activity
 

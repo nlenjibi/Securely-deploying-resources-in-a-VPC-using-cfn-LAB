@@ -1,6 +1,6 @@
-template-file-path: vpc-lab.yaml
+template-file-path: security-baseline-level1.yaml
 
-stack-name: bem11-vpc-lab
+stack-name: bem11-security-baseline-lab
 
 region: us-east-1
 
@@ -9,11 +9,11 @@ capabilities:
   - CAPABILITY_NAMED_IAM
 
 parameters:
-  StudentName: "Timothy Nlenjibi"
-  LabName: "BEM11 Lab"
-  InstanceType: t3.micro
+  FullName: "Timothy Nlenjibi"
+  S3BucketName: "timothy-week2-secure-bucket"
 
 tags:
-  Project: BEM11-Networking-Lab
+  Project: BEM11-Security-Baseline-Lab
   Environment: Lab
   ManagedBy: GitSync-CloudFormation
+  ControlLevel: Level1-IAM-Secrets
