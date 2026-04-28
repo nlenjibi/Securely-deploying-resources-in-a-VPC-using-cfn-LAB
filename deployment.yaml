@@ -1,6 +1,6 @@
-template-file-path: security-baseline-level1.yaml
+template-file-path: security-baseline-level4.yaml
 
-stack-name: bem11-security-baseline-lab
+stack-name: bem11-security-baseline-level4-lab
 
 region: us-east-1
 
@@ -10,10 +10,9 @@ capabilities:
 
 parameters:
   FullName: "Timothy Nlenjibi"
-  S3BucketName: "timothy-week2-secure-bucket"
 
 tags:
   Project: BEM11-Security-Baseline-Lab
   Environment: Lab
   ManagedBy: GitSync-CloudFormation
-  ControlLevel: Level1-IAM-Secrets
+  ControlLevel: Level4-LeastPrivilege-VPC-Endpoints

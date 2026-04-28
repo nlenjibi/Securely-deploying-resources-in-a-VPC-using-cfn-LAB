@@ -1,0 +1,229 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Security Baseline Lab - Level 4
+  Implements least privilege S3 access, IAM user restriction,
+  VPC Gateway & Interface Endpoints with restrictive policies.
+
+Parameters:
+  FullName:
+    Type: String
+    Description: Your full name (used for resource naming)
+
+Resources:
+
+# ---------------------------
+# S3 BUCKETS
+# ---------------------------
+
+  RestrictedBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${FullName}-week2bucket-restricted"
+
+  UnrestrictedBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${FullName}-week2bucket-unrestricted"
+
+# ---------------------------
+# IAM USER
+# ---------------------------
+
+  LimitedIAMUser:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: !Sub "${FullName}-week2-iamuser"
+
+# ---------------------------
+# S3 BUCKET POLICY (LEAST PRIVILEGE)
+# ---------------------------
+
+  RestrictedBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref RestrictedBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+
+          - Sid: AllowSpecificUserPutObject
+            Effect: Allow
+            Principal:
+              AWS: !GetAtt LimitedIAMUser.Arn
+            Action:
+              - s3:PutObject
+            Resource: !Sub "${RestrictedBucket.Arn}/*"
+
+          - Sid: DenyAllOthersPutObject
+            Effect: Deny
+            Principal: "*"
+            Action:
+              - s3:PutObject
+            Resource: !Sub "${RestrictedBucket.Arn}/*"
+
+# ---------------------------
+# VPC
+# ---------------------------
+
+  LabVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      Tags:
+        - Key: Name
+          Value: !Sub "${FullName}-vpc"
+
+  PrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref LabVPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      Tags:
+        - Key: Name
+          Value: PrivateSubnet
+
+  RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref LabVPC
+
+  SubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet
+      RouteTableId: !Ref RouteTable
+
+# ---------------------------
+# IAM ROLE FOR EC2
+# ---------------------------
+
+  EC2Role:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${FullName}-ec2-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Policies:
+        - PolicyName: S3ReadOnlyMinimal
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                  - s3:GetObject
+                Resource: "*"
+
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref EC2Role
+
+# ---------------------------
+# EC2 INSTANCE (PRIVATE)
+# ---------------------------
+
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-0c02fb55956c7d316 # Amazon Linux 2 (update if needed per region)
+      InstanceType: t2.micro
+      SubnetId: !Ref PrivateSubnet
+      IamInstanceProfile: !Ref InstanceProfile
+
+# ---------------------------
+# VPC GATEWAY ENDPOINT (S3)
+# ---------------------------
+
+  S3GatewayEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref LabVPC
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.s3"
+      RouteTableIds:
+        - !Ref RouteTable
+      VpcEndpointType: Gateway
+      PolicyDocument:
+        Version: "2008-10-17"
+        Statement:
+
+          - Effect: Allow
+            Principal: "*"
+            Action: "s3:*"
+            Resource: "*"
+
+          - Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource:
+              - !Sub "arn:aws:s3:::${FullName}-week2bucket-restricted"
+              - !Sub "arn:aws:s3:::${FullName}-week2bucket-restricted/*"
+
+# ---------------------------
+# SECURITY GROUP FOR INTERFACE ENDPOINT
+# ---------------------------
+
+  EndpointSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow HTTPS to endpoint
+      VpcId: !Ref LabVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 10.0.0.0/16
+
+# ---------------------------
+# VPC INTERFACE ENDPOINT (S3)
+# ---------------------------
+
+  S3InterfaceEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref LabVPC
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.s3"
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !Ref PrivateSubnet
+      SecurityGroupIds:
+        - !Ref EndpointSecurityGroup
+      PrivateDnsEnabled: false
+      PolicyDocument:
+        Version: "2008-10-17"
+        Statement:
+
+          - Effect: Allow
+            Principal: "*"
+            Action: "s3:*"
+            Resource: "*"
+
+          - Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource:
+              - !Sub "arn:aws:s3:::${FullName}-week2bucket-restricted"
+              - !Sub "arn:aws:s3:::${FullName}-week2bucket-restricted/*"
+
+# ---------------------------
+# OUTPUTS
+# ---------------------------
+
+Outputs:
+  RestrictedBucketName:
+    Value: !Ref RestrictedBucket
+
+  UnrestrictedBucketName:
+    Value: !Ref UnrestrictedBucket
+
+  IAMUserName:
+    Value: !Ref LimitedIAMUser

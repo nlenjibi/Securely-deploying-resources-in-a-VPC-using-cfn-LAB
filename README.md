@@ -1,185 +1,166 @@
-Here is a **clean, professional README.md** for your **BEM11 Security Baseline Lab (Level 1)** using **CloudFormation + GitSync + Least Privilege IAM + Secrets Management**.
-
-You can copy this directly into your GitHub repo.
+Here is a **clean, submission-ready README.md** for your **BEM11 Security Baseline Lab – Level 4 (Least Privilege + VPC Endpoints + IaC + GitSync)**.
 
 ---
 
-# 📘 BEM11 Security Baseline Lab – Level 1 (IAM & Secrets)
+# 📘 BEM11 Security Baseline Lab – Level 4
 
-## 🧭 Overview
+## 🔐 Overview
 
-This project implements **AWS Security Baseline Level 1 controls** using **Infrastructure as Code (CloudFormation)** and **GitSync deployment automation**.
+This project implements AWS Security Baseline controls using **Infrastructure as Code (IaC)** with AWS CloudFormation and Git-based deployment (GitSync).
 
-The goal is to enforce:
+It demonstrates **least privilege security design**, **resource-based policies**, and **secure network access using VPC endpoints**.
 
-* 🔐 Least privilege IAM access
-* 🔑 Secure secrets management (SSM + Secrets Manager)
-* 🧱 Elimination of long-term credentials for applications
-* ⚙️ Automated infrastructure provisioning using GitSync + CloudFormation
+The goal is to enforce strong security controls across identity, storage, and network layers.
 
 ---
 
 ## 🎯 Objectives
 
-This lab demonstrates:
-
-* Creation of **IAM Roles instead of IAM Users for applications**
-* Implementation of **least privilege access policies**
-* Secure storage of secrets using:
-
-  * AWS Systems Manager Parameter Store
-  * AWS Secrets Manager
-* Infrastructure deployment using:
-
-  * AWS CloudFormation
-  * GitSync automation
+* Implement **least privilege IAM access**
+* Restrict S3 access using **resource-based policies**
+* Deploy infrastructure using **CloudFormation templates**
+* Use **VPC Gateway and Interface Endpoints**
+* Enforce secure private access to AWS services
+* Automate deployment using GitSync CI/CD
 
 ---
 
-## 🏗️ Architecture
+## 🏗️ Architecture Components
 
-This stack provisions:
+This lab deploys the following resources:
 
-### 🔐 IAM Roles
+### 🧑‍💻 Identity & Access
 
-* EC2 Role (`*_ec2_role`)
-* Lambda Role (`*_lambda_role`)
-* ECS Role (`*_ecs_role`)
+* IAM User (restricted access)
+* IAM Role for EC2 (least privilege permissions)
 
-Each role follows **least privilege principles** and is scoped to required actions only.
+### 🪣 Storage
+
+* S3 Restricted Bucket
+* S3 Unrestricted Bucket
+* Bucket policy enforcing:
+
+  * Explicit allow for one IAM user
+  * Explicit deny for all others
+
+### 🌐 Network
+
+* VPC
+* Private Subnet
+* Route Table
+* Security Group
+
+### 🔌 VPC Endpoints
+
+* Gateway Endpoint for S3
+* Interface Endpoint for S3
+* Endpoint policies restricting bucket access
+
+### 🖥️ Compute
+
+* EC2 instance in private subnet
+* Session Manager access enabled via SSM
 
 ---
 
-### 🔑 Secrets Management
-
-* AWS Systems Manager Parameter Store (SecureString)
-* AWS Secrets Manager secret
-
-Encryption is handled using **AWS KMS key**
-
----
-
-## 📂 Project Structure
+## 📂 Repository Structure
 
 ```
 .
-├── deployment.yaml              # GitSync configuration
-├── security-baseline-least-privilege.yaml  # CloudFormation template
-└── README.md
+├── security-baseline-level4.yaml   # CloudFormation template
+├── git-sync-config.yaml            # Deployment configuration
+└── README.md                       # Documentation
 ```
 
 ---
 
-## 🚀 Deployment Method (GitSync + CloudFormation)
+## 🚀 Deployment (GitSync)
 
-### 1. Push code to GitHub repository
+The stack is deployed using GitSync with CloudFormation.
 
-### 2. GitSync configuration
+### Deployment File
 
-```yaml
-template-file-path: security-baseline-least-privilege.yaml
-stack-name: bem11-security-baseline-lab
-region: us-east-1
-capabilities:
-  - CAPABILITY_IAM
-  - CAPABILITY_NAMED_IAM
-```
+* `git-sync-config.yaml`
 
-### 3. Automatic deployment
-
-Any push to the repository triggers:
-
-* CloudFormation stack update
-* Resource provisioning
-
----
-
-## ⚙️ Parameters
-
-| Parameter    | Description                            |
-| ------------ | -------------------------------------- |
-| FullName     | Used for naming IAM roles              |
-| S3BucketName | Bucket used for least privilege access |
-
----
-
-## 🔐 Security Design
-
-### ✔ IAM Best Practices
-
-* No IAM users for applications
-* IAM Roles used for EC2, Lambda, ECS
-* Scoped permissions (no wildcard S3 access)
-
-### ✔ Least Privilege Example
-
-Instead of:
+### Stack Name
 
 ```
-AmazonS3ReadOnlyAccess
+bem11-security-baseline-level4-lab
 ```
 
-We use:
+### Region
 
 ```
-s3:GetObject
-s3:ListBucket
-Scoped to specific bucket only
+us-east-1
 ```
 
 ---
 
-### ✔ Secrets Protection
+## 🔐 Security Controls Implemented
 
-* No hardcoded credentials in code
-* Secrets stored in:
+### 1. Least Privilege IAM
 
-  * AWS SSM Parameter Store
-  * AWS Secrets Manager
-* Encrypted using AWS KMS
+* IAM user restricted to S3 PutObject only
+* EC2 role limited to required S3 read permissions
+* No wildcard administrative access
 
----
+### 2. Resource-Based Policy (S3)
 
-## 📦 Resources Created
+* Only a specific IAM user can upload objects
+* Explicit deny for all other principals
 
-| Resource               | Purpose                      |
-| ---------------------- | ---------------------------- |
-| IAM Role (EC2)         | EC2 instance permissions     |
-| IAM Role (Lambda)      | Lambda execution permissions |
-| IAM Role (ECS)         | Container task permissions   |
-| SSM Parameter          | Secure configuration storage |
-| Secrets Manager Secret | Application secrets storage  |
-| KMS Key                | Encryption of sensitive data |
+### 3. VPC Endpoint Security
 
----
+* Gateway endpoint restricts S3 access
+* Interface endpoint enforces private connectivity
+* Endpoint policies block restricted bucket access
 
-## 🧪 Validation Checklist (Lab Submission)
+### 4. Network Isolation
 
-* [x] EC2 IAM Role created
-* [x] Lambda IAM Role created
-* [x] ECS IAM Role created
-* [x] Parameter Store entry created
-* [x] Secrets Manager secret created
-* [x] GitSync deployment successful
-* [x] CloudFormation stack created successfully
-
-
-
-## 🧠 Key Learnings
-
-* IAM Roles are preferred over IAM Users for workloads
-* Secrets must never be hardcoded in applications
-* Least privilege reduces attack surface significantly
-* CloudFormation enables secure and repeatable infrastructure
-* GitSync automates infrastructure deployment from Git repositories
+* EC2 deployed in private subnet
+* No direct internet access
+* S3 access only via VPC endpoints
 
 ---
 
-## 🔮 Future Improvements
+## 🧪 Testing Scenarios
 
-* Add IAM Permission Boundaries
-* Add VPC endpoint restrictions (Level 4)
-* Enable automatic Secrets rotation
-* Integrate AWS CodeGuru for secret scanning
-* Add CloudTrail monitoring for IAM activity
+### S3 Access Testing
+
+* ❌ Unauthorized IAM user → Access Denied
+* ✅ Authorized IAM user → Upload successful
+
+### VPC Gateway Endpoint
+
+* ✅ Unrestricted bucket access works
+* ❌ Restricted bucket access denied
+
+### VPC Interface Endpoint
+
+* ✅ Unrestricted bucket access works
+* ❌ Restricted bucket access denied
+
+---
+
+
+## 🔁 Clean Up Steps
+
+After testing:
+
+* Delete VPC endpoints
+* Delete S3 buckets and objects
+* Terminate EC2 instance
+* Delete IAM users and roles (if required)
+
+---
+
+## 🧠 Key Learning Outcomes
+
+* Understanding of **least privilege security design**
+* Practical use of **IAM policies and resource-based policies**
+* Secure S3 access using **VPC endpoints**
+* Infrastructure automation using **CloudFormation**
+* Secure CI/CD deployment using GitSync
+
+---
 
