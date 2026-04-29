@@ -4,7 +4,7 @@ Description: Level 1 Security Baseline - IAM Roles and Secrets Management
 Parameters:
   FullName:
     Type: String
-    Description: full name for resource naming (e.g., "John Doe")
+    Description: full name for resource naming (NO SPACES, e.g., TimothyNlenjibi)
 
 Resources:
 
@@ -47,7 +47,7 @@ Resources:
         - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
 
 # =========================
-# 🐳 ECS ROLE (TASK ROLE)
+# 🐳 ECS ROLE
 # =========================
 
   ECSRole:
@@ -72,7 +72,7 @@ Resources:
   KMSKey:
     Type: AWS::KMS::Key
     Properties:
-      Description: Key for encrypting Parameter Store and Secrets Manager
+      Description: Key for encryption
       EnableKeyRotation: true
       KeyPolicy:
         Version: "2012-10-17"
@@ -90,10 +90,10 @@ Resources:
   SecureParameter:
     Type: AWS::SSM::Parameter
     Properties:
-      Name: !Sub "/${FullName}/week2lab/parameter_name/"
+      Name: !Sub "/${FullName}/week2lab/parameter_name"  
       Type: SecureString
       Value: "productionDatabaseKey329384"
-      KeyId: !Ref KMSKey
+      KeyId: alias/aws/ssm   
       Description: Secure parameter for Week 2 lab
 
 # =========================
@@ -105,7 +105,7 @@ Resources:
     Properties:
       Name: !Sub "/${FullName}/week2lab/secret_name"
       Description: Secret for Week 2 lab
-      KmsKeyId: !Ref KMSKey
+      KmsKeyId: !GetAtt KMSKey.Arn    
       SecretString: |
         {
           "MyPassword": "SuperSecurePassword123"

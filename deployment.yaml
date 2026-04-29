@@ -9,7 +9,7 @@ capabilities:
   - CAPABILITY_NAMED_IAM
 
 parameters:
-  FullName: "Timothy Nlenjibi"
+  FullName: "TimothyNlenjibi"
 
 tags:
   Project: BEM11-Security-Baseline-Lab
