@@ -10,7 +10,6 @@ capabilities:
 
 parameters:
   FullName: "Timothy Nlenjibi"
-  S3BucketName: "timothy-week2-secure-bucket"
 
 tags:
   Project: BEM11-Security-Baseline-Lab
