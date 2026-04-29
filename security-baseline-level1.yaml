@@ -1,23 +1,22 @@
-
 AWSTemplateFormatVersion: "2010-09-09"
 Description: Level 1 Security Baseline - IAM Roles and Secrets Management
 
 Parameters:
   FullName:
     Type: String
-    Description: Your full name (used for naming resources)
+    Description: full name for resource naming (e.g., "John Doe")
 
 Resources:
 
 # =========================
-# 🔐 IAM ROLES
+# 🔐 EC2 ROLE
 # =========================
 
   EC2Role:
     Type: AWS::IAM::Role
     Properties:
-      Description: Allows EC2 instances to read S3 objects
       RoleName: !Sub "${FullName}_ec2_role"
+      Description: EC2 role with S3 read access
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -28,11 +27,15 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
 
+# =========================
+# ⚙️ LAMBDA ROLE
+# =========================
+
   LambdaRole:
     Type: AWS::IAM::Role
     Properties:
-      Description: Allows Lambda functions to read S3 objects
       RoleName: !Sub "${FullName}_lambda_role"
+      Description: Lambda role with S3 read access
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -43,10 +46,15 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
 
+# =========================
+# 🐳 ECS ROLE (TASK ROLE)
+# =========================
+
   ECSRole:
     Type: AWS::IAM::Role
     Properties:
       RoleName: !Sub "${FullName}_ecs_role"
+      Description: ECS task role with S3 read access
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -61,11 +69,10 @@ Resources:
 # 🔑 KMS KEY
 # =========================
 
-  
   KMSKey:
     Type: AWS::KMS::Key
     Properties:
-      Description: Key for Parameter Store encryption
+      Description: Key for encrypting Parameter Store and Secrets Manager
       EnableKeyRotation: true
       KeyPolicy:
         Version: "2012-10-17"
@@ -89,7 +96,6 @@ Resources:
       KeyId: !Ref KMSKey
       Description: Secure parameter for Week 2 lab
 
-
 # =========================
 # 🔒 SECRETS MANAGER
 # =========================
@@ -105,6 +111,9 @@ Resources:
           "MyPassword": "SuperSecurePassword123"
         }
 
+# =========================
+# 📤 OUTPUTS
+# =========================
 
 Outputs:
   EC2RoleName:
