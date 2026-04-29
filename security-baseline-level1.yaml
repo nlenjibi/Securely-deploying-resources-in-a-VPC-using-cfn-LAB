@@ -16,6 +16,7 @@ Resources:
   EC2Role:
     Type: AWS::IAM::Role
     Properties:
+      Description: Allows EC2 instances to read S3 objects
       RoleName: !Sub "${FullName}_ec2_role"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
@@ -30,6 +31,7 @@ Resources:
   LambdaRole:
     Type: AWS::IAM::Role
     Properties:
+      Description: Allows Lambda functions to read S3 objects
       RoleName: !Sub "${FullName}_lambda_role"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
@@ -40,7 +42,6 @@ Resources:
             Action: sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
 
   ECSRole:
     Type: AWS::IAM::Role
@@ -60,16 +61,18 @@ Resources:
 # 🔑 KMS KEY
 # =========================
 
+  
   KMSKey:
     Type: AWS::KMS::Key
     Properties:
-      Description: Encryption key for Parameter Store
+      Description: Key for Parameter Store encryption
+      EnableKeyRotation: true
       KeyPolicy:
         Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
-              AWS: "*"
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
             Action: "kms:*"
             Resource: "*"
 
@@ -84,6 +87,8 @@ Resources:
       Type: SecureString
       Value: "productionDatabaseKey329384"
       KeyId: !Ref KMSKey
+      Description: Secure parameter for Week 2 lab
+
 
 # =========================
 # 🔒 SECRETS MANAGER
@@ -93,11 +98,13 @@ Resources:
     Type: AWS::SecretsManager::Secret
     Properties:
       Name: !Sub "/${FullName}/week2lab/secret_name"
-      Description: Sample secret
+      Description: Secret for Week 2 lab
+      KmsKeyId: !Ref KMSKey
       SecretString: |
         {
           "MyPassword": "SuperSecurePassword123"
         }
+
 
 Outputs:
   EC2RoleName:
